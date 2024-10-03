@@ -35,3 +35,6 @@ It's created during the authentication process and is still related to the authe
 
 If you're on macOS or using a venv, you might want to replace `pip` and `python` with `pip3`/`venv/bin/pip` and
 `python3`/`venv/bin/python`.
+
+Tip: If you've synced your contacts to a new calendar, you can just delete it and create a new one when you want to
+re-sync your contacts. 
