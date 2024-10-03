@@ -33,7 +33,7 @@ def authenticate_google():
     return contacts_service, calendar_service
 
 
-def get_birthdays_and_anniversaries(contacts_service):
+def get_anniversaries(contacts_service):
     """Fetches birthdays and anniversaries from all pages of Google Contacts."""
     anniversaries = []
     page_token = None  # To track pagination
@@ -62,7 +62,7 @@ def get_birthdays_and_anniversaries(contacts_service):
                 if date:
                     birthday_entry = {
                         'name': name,
-                        'type': 'Birthday',
+                        'type': '🎂 Birthday',
                         'date': date
                     }
                     anniversaries.append(birthday_entry)
@@ -72,10 +72,12 @@ def get_birthdays_and_anniversaries(contacts_service):
             for event in events_data:
                 type = event.get('type').capitalize()
                 date = event.get('date')
+                if not date.get('year'):
+                    date['year'] = 2024
                 if date:
                     anniversary_entry = {
                         'name': name,
-                        'type': type,
+                        'type': '🎉 ' + type,
                         'date': date
                     }
                     anniversaries.append(anniversary_entry)
@@ -88,7 +90,8 @@ def get_birthdays_and_anniversaries(contacts_service):
     return anniversaries
 
 
-def create_calendar_event(service, event_name, event_date, calendar_id='primary'):
+def create_calendar_event(service, event_name, event_date,
+                          calendar_id):
     """Create a calendar event on Google Calendar."""
     event = {
         'summary': event_name,
@@ -106,15 +109,17 @@ def create_calendar_event(service, event_name, event_date, calendar_id='primary'
     print(f"Event created: {event.get('htmlLink')}")
 
 
-def transfer_to_calendar(birthdays, anniversaries, calendar_service):
+def transfer_to_calendar(anniversaries, calendar_service, calendar_id):
     """Transfer birthdays and anniversaries to Google Calendar."""
-    for birthday in birthdays:
-        date = f"{birthday['date']['year']}-{birthday['date']['month']:02d}-{birthday['date']['day']:02d}"
-        create_calendar_event(calendar_service, f"Birthday: {birthday['name']}", date)
+    iteration = 1
+    total_iterations = len(anniversaries)
 
     for anniversary in anniversaries:
+        print(f"Creating Event {iteration} out of {total_iterations}...")
+        print(f"Calendar id: {calendar_id}")
         date = f"{anniversary['date']['year']}-{anniversary['date']['month']:02d}-{anniversary['date']['day']:02d}"
-        create_calendar_event(calendar_service, f"Anniversary: {anniversary['name']}", date)
+        create_calendar_event(calendar_service, f"{anniversary['type']}: {anniversary['name']}", date, calendar_id)
+        iteration += 1
 
 
 if __name__ == '__main__':
@@ -122,9 +127,7 @@ if __name__ == '__main__':
     contacts_service, calendar_service = authenticate_google()
 
     # Get birthdays and anniversaries from Google Contacts
-    anniversaries = get_birthdays_and_anniversaries(contacts_service)
-
-    print(anniversaries)
+    anniversaries = get_anniversaries(contacts_service)
 
     # Transfer these events to Google Calendar
-    # transfer_to_calendar(birthdays, anniversaries, calendar_service)
+    transfer_to_calendar(anniversaries, calendar_service, 'primary')
