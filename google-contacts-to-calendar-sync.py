@@ -1,9 +1,8 @@
 import os
-import json
-import datetime
+
+from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 
 # Define the required API scopes
@@ -35,45 +34,58 @@ def authenticate_google():
 
 
 def get_birthdays_and_anniversaries(contacts_service):
-    """Fetches birthdays and anniversaries from Google Contacts."""
-    birthdays = []
+    """Fetches birthdays and anniversaries from all pages of Google Contacts."""
     anniversaries = []
-    # Retrieve contacts with birthdays and anniversaries
-    results = contacts_service.people().connections().list(
-        resourceName='people/me',
-        personFields='names,birthdays,events'
-    ).execute()
+    page_token = None  # To track pagination
 
-    connections = results.get('connections', [])
+    while True:
+        # Fetch a page of contacts
+        results = contacts_service.people().connections().list(
+            resourceName='people/me',
+            pageToken=page_token,  # Pass the page token if it's available
+            pageSize=100,  # Fetch 100 contacts per request (max)
+            personFields='names,birthdays,events'  # Specify the fields we need
+        ).execute()
 
-    for person in connections:
-        names = person.get('names', [])
-        name = names[0]['displayName'] if names else "Unnamed"
+        connections = results.get('connections', [])
 
-        # Get birthdays
-        birthdays_data = person.get('birthdays', [])
-        for birthday in birthdays_data:
-            date = birthday.get('date')
-            if date:
-                birthday_entry = {
-                    'name': name,
-                    'date': date
-                }
-                birthdays.append(birthday_entry)
+        for person in connections:
+            names = person.get('names', [])
+            name = names[0]['displayName'] if names else "Unnamed"
 
-        # Get anniversaries (stored in "events" field)
-        events_data = person.get('events', [])
-        for event in events_data:
-            if event.get('type') == 'anniversary':
+            # Get birthdays
+            birthdays_data = person.get('birthdays', [])
+            for birthday in birthdays_data:
+                date = birthday.get('date')
+                if not date.get('year'):
+                    date['year'] = 2024
+                if date:
+                    birthday_entry = {
+                        'name': name,
+                        'type': 'Birthday',
+                        'date': date
+                    }
+                    anniversaries.append(birthday_entry)
+
+            # Get anniversaries (stored in "events" field)
+            events_data = person.get('events', [])
+            for event in events_data:
+                type = event.get('type').capitalize()
                 date = event.get('date')
                 if date:
                     anniversary_entry = {
                         'name': name,
+                        'type': type,
                         'date': date
                     }
                     anniversaries.append(anniversary_entry)
 
-    return birthdays, anniversaries
+        # Check if there is another page of results
+        page_token = results.get('nextPageToken')
+        if not page_token:
+            break  # Exit the loop when there are no more pages
+
+    return anniversaries
 
 
 def create_calendar_event(service, event_name, event_date, calendar_id='primary'):
@@ -110,7 +122,9 @@ if __name__ == '__main__':
     contacts_service, calendar_service = authenticate_google()
 
     # Get birthdays and anniversaries from Google Contacts
-    birthdays, anniversaries = get_birthdays_and_anniversaries(contacts_service)
+    anniversaries = get_birthdays_and_anniversaries(contacts_service)
+
+    print(anniversaries)
 
     # Transfer these events to Google Calendar
-    transfer_to_calendar(birthdays, anniversaries, calendar_service)
+    # transfer_to_calendar(birthdays, anniversaries, calendar_service)
