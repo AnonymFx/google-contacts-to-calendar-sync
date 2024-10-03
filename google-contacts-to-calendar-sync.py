@@ -130,4 +130,5 @@ if __name__ == '__main__':
     anniversaries = get_anniversaries(contacts_service)
 
     # Transfer these events to Google Calendar
-    transfer_to_calendar(anniversaries, calendar_service, 'primary')
+    calendar_id = 'primary'
+    transfer_to_calendar(anniversaries, calendar_service, calendar_id)
